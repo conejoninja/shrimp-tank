@@ -25,11 +25,24 @@ func main() {
 	ledPin5.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	ledPin6.Configure(machine.PinConfig{Mode: machine.PinOutput})
 	temperature = 25000
-	sensors_ds18b20 = ds18b20.New(onewire.New(machine.D2))
+	ow := onewire.New(machine.D2)
+	romIDs, err := ow.Search(onewire.SEARCH_ROM)
+	if err != nil {
+		println(err)
+	}
+	sensors_ds18b20 := ds18b20.New(ow)
 	for true {
-		_ = sensors_ds18b20.RequestTemperature()
+		for _, romid := range romIDs {
+			sensors_ds18b20.RequestTemperature(romid)
+		}
 		time.Sleep(1024 * time.Millisecond)
-		temperature, _ = sensors_ds18b20.ReadTemperature()
+		temperature, _ = func() (tmp int32, err error) {
+			for _, romid := range romIDs {
+				tmp, err = sensors_ds18b20.ReadTemperature(romid)
+				break
+			}
+			return
+		}()
 
 		ledPin4.Low()
 		ledPin5.Low()
